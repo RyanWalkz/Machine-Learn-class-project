@@ -1,0 +1,1 @@
+# Projeto iniciado na aula de LLM e Data Science
