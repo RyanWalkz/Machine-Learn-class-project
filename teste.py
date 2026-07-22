@@ -68,11 +68,10 @@ bins = [-0.01, 0, 1.49, 3.59, 6.99, df_projeto["price"].max()]
 labels = ["gratuito", "baixo", "medio_baixo", "medio_alto", "alto"]
 df_projeto["precos_categorizados"] = pd.cut(df_projeto["price"], bins=bins, labels=labels)
 
-# 10. Definição estrita das colunas de Features (X) e Target (y)
+# 10. Definição ENXUTA das colunas para o Deploy (Apenas 10 features)
 cols_features = [
     'game_age', 'owners_mean', 'total_reviews', 'positive_ratio', 
-    'num_languages', 'num_genres', 'windows', 'mac', 'linux', 'dlc_count'
-] + [f'genre_{g}' for g in pop_genres]
+    'num_languages', 'num_genres', 'windows', 'mac', 'linux', 'dlc_count']
 
 # Garantindo isolamento das variáveis do modelo
 X = df_projeto[cols_features].fillna(0).copy()
@@ -100,7 +99,7 @@ preds = model_final.predict(X_test)
 # 13. Exibir Resultados
 print("\n=== RESULTADOS ===")
 print("Acurácia final:", accuracy_score(y_test, preds))
-print("\nRelatório de Classificação:\n", classification_report(y_test, preds))
+print("\nRelatorio de Classificacao:\n", classification_report(y_test, preds))
 
 # 14. Exportar base limpa
 df_export = X.copy()
