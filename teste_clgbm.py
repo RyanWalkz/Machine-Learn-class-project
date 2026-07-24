@@ -99,28 +99,57 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
 )
 
-# 12. Treinamento com LightGBM
-model_lgbm = LGBMClassifier(
-    n_estimators=300,        # Mais árvores sequenciais
-    learning_rate=0.03,      # Taxa de aprendizado suave para evitar overfitting
-    max_depth=7,             # Profundidade moderada
-    num_leaves=31,           # Número de folhas padrão do LightGBM
-    subsample=0.8,           # Amostragem de linhas
-    colsample_bytree=0.8,    # Amostragem de colunas por árvore
+from sklearn.model_selection import RandomizedSearchCV
+import joblib
+
+# 12. Grade reduzida e focada
+param_distributions = {
+    'n_estimators': [150, 250],
+    'learning_rate': [0.03, 0.07],
+    'max_depth': [5, 7],
+    'num_leaves': [20, 31]
+}
+
+# n_jobs=1 no modelo evita concorrência desnecessária de threads
+lgbm_base = LGBMClassifier(
+    subsample=0.8,
+    colsample_bytree=0.8,
     random_state=42,
-    n_jobs=-1,
+    n_jobs=1,               # <-- IMPORTANTE: 1 thread por árvore
     verbose=-1
 )
 
-print("Treinando o modelo LightGBM...")
-model_lgbm.fit(X_train, y_train)
+# RandomizedSearchCV: testa apenas 8 combinações de forma leve
+random_search = RandomizedSearchCV(
+    estimator=lgbm_base,
+    param_distributions=param_distributions,
+    n_iter=8,               # APENAS 8 testes no total (Rápido e leve)
+    cv=2,                   # APENAS 2 dobras
+    scoring='accuracy',
+    random_state=42,
+    verbose=1,
+    n_jobs=2                # <-- IMPORTANTE: Limita a 2 núcleos no máximo
+)
 
-# 13. Previsões e Reversão dos Rótulos
-preds_encoded = model_lgbm.predict(X_test)
+print("Iniciando otimizacao leve (Uso de CPU controlado)...")
+random_search.fit(X_train, y_train)
+
+# 13. Exibição dos Melhores Parâmetros Encontrados
+print("\n=== MELHORES HIPERPARAMETROS ===")
+print(random_search.best_params_)
+
+# 14. Avaliação do Melhor Modelo
+best_model = random_search.best_estimator_
+preds_encoded = best_model.predict(X_test)
+
 preds = label_encoder.inverse_transform(preds_encoded)
 y_test_original = label_encoder.inverse_transform(y_test)
 
-# 14. Exibição dos Resultados
-print("\n=== RESULTADOS (LIGHTGBM) ===")
-print("Acurácia final:", accuracy_score(y_test_original, preds))
-print("\nRelatório de Classificação:\n", classification_report(y_test_original, preds))
+print("\n=== RESULTADOS FINAIS (LIGHTGBM) ===")
+print("Acuracia final no teste:", accuracy_score(y_test_original, preds))
+print("\nRelatorio de Classificacao:\n", classification_report(y_test_original, preds))
+
+'''# Salvar modelo e encoder para o deploy
+joblib.dump(best_model, 'modelo_steam_lgbm.pkl')
+joblib.dump(label_encoder, 'label_encoder.pkl')
+print("\nModelo e LabelEncoder salvos com segurança!")'''
